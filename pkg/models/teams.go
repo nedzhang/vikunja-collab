@@ -182,6 +182,23 @@ func addMoreInfoToTeams(s *xorm.Session, teams []*Team) (err error) {
 	return
 }
 
+func CreateDefaultTeamForNewUser(s *xorm.Session, user *user.User) (t *Team, err error) {
+
+	t = &Team{
+		// Title: "Inbox",
+		Name:        "Team created by " + user.Username,
+		Description: "The first team of " + user.Username,
+	}
+
+	err = t.createTeamInternal(s, user, true)
+
+	if err != nil {
+		return t, err
+	}
+
+	return
+}
+
 // CreateNewTeam creates a new team and assignes the user that has caused creation
 // as the first member of the team
 // If firstUserShouldBeAdmin is true, the user will be an admin of the team
@@ -195,6 +212,20 @@ func (t *Team) CreateNewTeam(s *xorm.Session, a web.Auth, firstUserShouldBeAdmin
 	}
 
 	// Check if we have a name
+	err = t.createTeamInternal(s, doer, firstUserShouldBeAdmin)
+
+	if err != nil {
+		return err
+	}
+
+	return events.Dispatch(&TeamCreatedEvent{
+		Team: t,
+		Doer: a,
+	})
+}
+
+func (t *Team) createTeamInternal(s *xorm.Session, doer *user.User, firstUserShouldBeAdmin bool) (err error) {
+
 	if t.Name == "" {
 		return ErrTeamNameCannotBeEmpty{}
 	}
@@ -205,7 +236,7 @@ func (t *Team) CreateNewTeam(s *xorm.Session, a web.Auth, firstUserShouldBeAdmin
 
 	_, err = s.Insert(t)
 	if err != nil {
-		return
+		return err
 	}
 
 	tm := TeamMember{TeamID: t.ID, Username: doer.Username, Admin: firstUserShouldBeAdmin}
@@ -213,10 +244,8 @@ func (t *Team) CreateNewTeam(s *xorm.Session, a web.Auth, firstUserShouldBeAdmin
 		return err
 	}
 
-	return events.Dispatch(&TeamCreatedEvent{
-		Team: t,
-		Doer: a,
-	})
+	return
+
 }
 
 // ReadOne implements the CRUD method to get one team

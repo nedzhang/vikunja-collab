@@ -76,37 +76,12 @@ type TeamWithRight struct {
 func (tl *TeamProject) Create(s *xorm.Session, a web.Auth) (err error) {
 
 	// Check if the rights are valid
-	if err = tl.Right.isValid(); err != nil {
-		return
-	}
-
-	// Check if the team exists
-	team, err := GetTeamByID(s, tl.TeamID)
+	l, team, err := tl.CreateInternal(s)
 	if err != nil {
 		return err
 	}
 
-	// Check if the project exists
-	l, err := GetProjectSimpleByID(s, tl.ProjectID)
-	if err != nil {
-		return err
-	}
-
-	// Check if the team is already on the project
-	exists, err := s.Where("team_id = ?", tl.TeamID).
-		And("project_id = ?", tl.ProjectID).
-		Get(&TeamProject{})
-	if err != nil {
-		return
-	}
-	if exists {
-		return ErrTeamAlreadyHasAccess{tl.TeamID, tl.ProjectID}
-	}
-
-	// Insert the new team
-	tl.ID = 0
-	_, err = s.Insert(tl)
-	if err != nil {
+	if err = updateProjectLastUpdated(s, l); err != nil {
 		return err
 	}
 
@@ -119,8 +94,47 @@ func (tl *TeamProject) Create(s *xorm.Session, a web.Auth) (err error) {
 		return err
 	}
 
-	err = updateProjectLastUpdated(s, l)
 	return
+}
+
+func (tl *TeamProject) CreateInternal(s *xorm.Session) (project *Project, team *Team, err error) {
+
+	if err = tl.Right.isValid(); err != nil {
+		return nil, nil, err
+	}
+
+	// Check if the team exists
+
+	team, err = GetTeamByID(s, tl.TeamID)
+	if err != nil {
+		return nil, team, err
+	}
+
+	// Check if the project exists
+	project, err = GetProjectSimpleByID(s, tl.ProjectID)
+	if err != nil {
+		return project, team, err
+	}
+
+	// Check if the team is already on the project
+	exists, err := s.Where("team_id = ?", tl.TeamID).
+		And("project_id = ?", tl.ProjectID).
+		Get(&TeamProject{})
+	if err != nil {
+		return project, team, err
+	}
+	if exists {
+		return project, team, ErrTeamAlreadyHasAccess{tl.TeamID, tl.ProjectID}
+	}
+
+	// Insert the new team
+	tl.ID = 0
+	_, err = s.Insert(tl)
+	if err != nil {
+		return project, team, err
+	}
+
+	return project, team, err
 }
 
 // Delete deletes a team <-> project relation based on the project & team id

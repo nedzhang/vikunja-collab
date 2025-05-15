@@ -200,7 +200,7 @@ var userCreateCmd = &cobra.Command{
 			log.Fatalf("Error creating new user: %s", err)
 		}
 
-		err = models.CreateNewProjectForUser(s, newUser)
+		_, err = models.CreateNewProjectForUser(s, newUser)
 		if err != nil {
 			_ = s.Rollback()
 			log.Fatalf("Error creating new project for user: %s", err)

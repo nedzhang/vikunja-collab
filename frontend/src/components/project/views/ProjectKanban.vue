@@ -800,7 +800,7 @@ function unCollapseBucket(bucket: IBucket) {
 
 <style lang="scss">
 $ease-out: all .3s cubic-bezier(0.23, 1, 0.32, 1);
-$bucket-width: 300px;
+$bucket-width: 220px;
 $bucket-header-height: 60px;
 $bucket-right-margin: 1rem;
 

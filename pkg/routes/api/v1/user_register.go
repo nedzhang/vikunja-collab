@@ -83,7 +83,25 @@ func RegisterUser(c echo.Context) error {
 	}
 
 	// Create their initial project
-	err = models.CreateNewProjectForUser(s, newUser)
+	firstP, err := models.CreateNewProjectForUser(s, newUser)
+	if err != nil {
+		_ = s.Rollback()
+		return handler.HandleHTTPError(err)
+	}
+
+	firstT, err := models.CreateDefaultTeamForNewUser(s, newUser)
+	if err != nil {
+		_ = s.Rollback()
+		return handler.HandleHTTPError(err)
+	}
+
+	projectUser := &models.TeamProject{
+		ProjectID: firstP.ID,
+		TeamID:    firstT.ID,
+		Right:     models.RightWrite,
+	}
+
+	_, _, err = projectUser.CreateInternal(s)
 	if err != nil {
 		_ = s.Rollback()
 		return handler.HandleHTTPError(err)
@@ -95,4 +113,5 @@ func RegisterUser(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, newUser)
+
 }

@@ -78,40 +78,8 @@ type UserWithRight struct {
 // @Router /projects/{id}/users [put]
 func (lu *ProjectUser) Create(s *xorm.Session, a web.Auth) (err error) {
 
-	// Check if the right is valid
-	if err := lu.Right.isValid(); err != nil {
-		return err
-	}
+	l, u, err := lu.CreateInternal(s)
 
-	// Check if the project exists
-	l, err := GetProjectSimpleByID(s, lu.ProjectID)
-	if err != nil {
-		return
-	}
-
-	// Check if the user exists
-	u, err := user.GetUserByUsername(s, lu.Username)
-	if err != nil {
-		return err
-	}
-	lu.UserID = u.ID
-
-	// Check if the user already has access or is owner of that project
-	// We explicitly DONT check for teams here
-	if l.OwnerID == lu.UserID {
-		return ErrUserAlreadyHasAccess{UserID: lu.UserID, ProjectID: lu.ProjectID}
-	}
-
-	exist, err := s.Where("project_id = ? AND user_id = ?", lu.ProjectID, lu.UserID).Get(&ProjectUser{})
-	if err != nil {
-		return
-	}
-	if exist {
-		return ErrUserAlreadyHasAccess{UserID: lu.UserID, ProjectID: lu.ProjectID}
-	}
-
-	lu.ID = 0
-	_, err = s.Insert(lu)
 	if err != nil {
 		return err
 	}
@@ -125,7 +93,53 @@ func (lu *ProjectUser) Create(s *xorm.Session, a web.Auth) (err error) {
 		return err
 	}
 
+	return
+}
+
+func (lu *ProjectUser) CreateInternal(s *xorm.Session) (l *Project, u *user.User, err error) {
+
+	// Check if the right is valid
+	if err = lu.Right.isValid(); err != nil {
+		return nil, nil, err
+	}
+
+	// Check if the project exists
+	l, err = GetProjectSimpleByID(s, lu.ProjectID)
+	if err != nil {
+		return l, nil, err
+	}
+
+	u, err = user.GetUserByUsername(s, lu.Username)
+	if err != nil {
+		return l, u, err
+	}
+	lu.UserID = u.ID
+
+	// Check if the user already has access or is owner of that project
+	// We explicitly DONT check for teams here
+	if l.OwnerID == lu.UserID {
+		return l, u, ErrUserAlreadyHasAccess{UserID: lu.UserID, ProjectID: lu.ProjectID}
+	}
+
+	exist, err := s.Where("project_id = ? AND user_id = ?", lu.ProjectID, lu.UserID).Get(&ProjectUser{})
+	if err != nil {
+		return l, u, err
+	}
+	if exist {
+		return l, u, ErrUserAlreadyHasAccess{UserID: lu.UserID, ProjectID: lu.ProjectID}
+	}
+
+	lu.ID = 0
+	_, err = s.Insert(lu)
+	if err != nil {
+		return l, u, err
+	}
+
 	err = updateProjectLastUpdated(s, l)
+	if err != nil {
+		return l, u, err
+	}
+
 	return
 }
 

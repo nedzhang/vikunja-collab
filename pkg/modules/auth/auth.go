@@ -151,6 +151,6 @@ func CreateUserWithRandomUsername(s *xorm.Session, uu *user.User) (u *user.User,
 	}
 
 	// And create their project
-	err = models.CreateNewProjectForUser(s, u)
+	_, err = models.CreateNewProjectForUser(s, u)
 	return
 }

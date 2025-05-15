@@ -909,22 +909,28 @@ func CreateProject(s *xorm.Session, project *Project, auth web.Auth, createBackl
 
 // CreateNewProjectForUser creates a new inbox project for a user. To prevent import cycles, we can't do that
 // directly in the user.Create function.
-func CreateNewProjectForUser(s *xorm.Session, u *user.User) (err error) {
-	p := &Project{
-		Title: "Inbox",
+func CreateNewProjectForUser(s *xorm.Session, u *user.User) (p *Project, err error) {
+
+	// fmt.Println("**CreateNewProjectForUser called** u: ", u)
+
+	p = &Project{
+		// Title: "Inbox",
+		Title:       "Procure Pipeline",
+		Description: "<h1>Procurement Pipline</h1><p>Pipeline for formulating + distributing requests and evaluate the responses.</p>",
 	}
 	err = p.Create(s, u)
 	if err != nil {
-		return err
+		return p, err
 	}
 
 	if u.DefaultProjectID != 0 {
-		return err
+		return p, err
 	}
 
 	u.DefaultProjectID = p.ID
 	_, err = user.UpdateUser(s, u, false)
-	return err
+	return p, err
+
 }
 
 func UpdateProject(s *xorm.Session, project *Project, auth web.Auth, updateProjectBackground bool) (err error) {
@@ -1108,6 +1114,9 @@ func updateProjectByTaskID(s *xorm.Session, taskID int64) (err error) {
 // @Failure 500 {object} models.Message "Internal error"
 // @Router /projects [put]
 func (p *Project) Create(s *xorm.Session, a web.Auth) (err error) {
+
+	// fmt.Println("**Create** project.Create called p: ", p, " a: ", a)
+
 	err = CreateProject(s, p, a, true, true)
 	if err != nil {
 		return
