@@ -121,6 +121,17 @@
 		>
 			{{ $t('task.attachment.upload') }}
 		</x-button>
+		
+		<x-button
+			v-if="editEnabled"
+			:disabled="loading"
+			class="mb-4"
+			icon="brain"
+			variant="secondary"
+			:shadow="false"
+		>
+			Analyze doc AI
+		</x-button>
 
 		<!-- Dropzone -->
 		<Teleport to="body">
